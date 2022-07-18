@@ -66,6 +66,11 @@ pub mod macos;
 #[cfg(target_os = "macos")]
 pub use crate::macos::*;
 
+#[cfg(target_os = "netbsd")]
+pub mod netbsd;
+#[cfg(target_os = "netbsd")]
+pub use crate::netbsd::*;
+
 #[cfg(target_family = "windows")]
 pub mod windows;
 #[cfg(target_family = "windows")]
@@ -96,6 +101,19 @@ pub fn local_ip() -> Result<IpAddr, Error> {
         let ifas = crate::macos::list_afinet_netifas()?;
 
         if let Some((_, ipaddr)) = find_ifa(ifas, "en0") {
+            return Ok(ipaddr);
+        }
+
+        Err(Error::PlatformNotSupported(env::consts::OS.to_string()))
+    }
+    
+    #[cfg(target_os = "netbsd")]
+    {
+        use std::env;
+
+        let ifas = crate::netbsd::list_afinet_netifas()?;
+
+        if let Some((_, ipaddr)) = find_ifa(ifas, "iwn0") {
             return Ok(ipaddr);
         }
 
@@ -144,6 +162,15 @@ mod tests {
         assert!(matches!(my_local_ip, IpAddr::V4(_)));
         println!("macOS 'local_ip': {:?}", my_local_ip);
     }
+    
+    #[test]
+    #[cfg(target_os = "netbsd")]
+    fn find_local_ip() {
+        let my_local_ip = local_ip().unwrap();
+
+        assert!(matches!(my_local_ip, IpAddr::V4(_)));
+        println!("NetBSD 'local_ip': {:?}", my_local_ip);
+    }
 
     #[test]
     #[cfg(target_os = "windows")]
@@ -165,6 +192,15 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "macos")]
+    fn find_network_interfaces() {
+        let network_interfaces = list_afinet_netifas();
+
+        assert!(network_interfaces.is_ok());
+        assert!(network_interfaces.unwrap().len() >= 1);
+    }
+    
+    #[test]
+    #[cfg(target_os = "netbsd")]
     fn find_network_interfaces() {
         let network_interfaces = list_afinet_netifas();
 
